@@ -54,24 +54,10 @@ def _is_content_url(url: str) -> bool:
     return True
 
 
-def sitemap_urls_from_robots(base: str) -> list[str]:
-    """Extract Sitemap: directives from robots.txt."""
-    try:
-        resp = requests.get(
-            f"{base}/robots.txt",
-            timeout=10,
-            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
-        )
-        resp.raise_for_status()
-    except Exception:
-        return []
-    return re.findall(r"(?im)^Sitemap:\s*(\S+)", resp.text)
-
-
 def discover_from_sitemap(sitemap_url: str) -> list[str]:
     """Fetch and parse a sitemap (including sitemap index files)."""
     try:
-        resp = requests.get(sitemap_url, timeout=10, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+        resp = requests.get(sitemap_url, timeout=(30, 30), headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
         resp.raise_for_status()
     except Exception as e:
         print(f"  [sitemap] Could not fetch {sitemap_url}: {e}")
@@ -104,7 +90,7 @@ def discover_from_page(root_url: str, max_links: int = 500) -> list[str]:
     Uses regex on raw HTML to avoid a full crawl4ai call for discovery.
     """
     try:
-        resp = requests.get(root_url, timeout=10, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+        resp = requests.get(root_url, timeout=(30, 30), headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
         resp.raise_for_status()
     except Exception as e:
         print(f"  [page discovery] Could not fetch {root_url}: {e}")
@@ -125,24 +111,19 @@ def discover_from_page(root_url: str, max_links: int = 500) -> list[str]:
 
 def discover_urls(start_url: str) -> list[str]:
     """
-    Main entry point. Tries sitemap.xml first; falls back to page link
-    extraction if no sitemap is found.
+    Main entry point. Tries sitemap.xml first, then supplements with page link
+    extraction from the root URL to catch pages missing from the sitemap.
     Returns a deduplicated, filtered list of URLs to crawl.
     """
     parsed = urlparse(start_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
 
-    # Prefer sitemap URLs declared in robots.txt; fall back to guessed paths
-    robots_sitemaps = sitemap_urls_from_robots(base)
-    if robots_sitemaps:
-        print(f"  Found {len(robots_sitemaps)} sitemap(s) in robots.txt.")
-        candidates = robots_sitemaps
-    else:
-        candidates = [
-            urljoin(base, "/sitemap.xml"),
-            urljoin(base, "/sitemap_index.xml"),
-            urljoin(base, "/sitemap/sitemap.xml"),
-        ]
+    # Try common sitemap locations
+    candidates = [
+        urljoin(base, "/sitemap.xml"),
+        urljoin(base, "/sitemap_index.xml"),
+        urljoin(base, "/sitemap/sitemap.xml"),
+    ]
 
     sitemap_urls = []
     for sitemap_url in candidates:
@@ -153,14 +134,18 @@ def discover_urls(start_url: str) -> list[str]:
             break
 
     if not sitemap_urls:
-        print(f"  No sitemap found, falling back to page link extraction from {base} ...")
-        sitemap_urls = discover_from_page(base)
-        print(f"  Found {len(sitemap_urls)} URLs via page links.")
+        print(f"  No sitemap found, using page link extraction only.")
 
-    # Deduplicate and filter
+    # Always supplement with link extraction from the root page to catch
+    # pages that are linked but not listed in the sitemap.
+    print(f"  Supplementing with link extraction from {base} ...")
+    page_urls = discover_from_page(base)
+    print(f"  Found {len(page_urls)} URLs via page links.")
+
+    # Merge and deduplicate with filtering
     seen = set()
     result = []
-    for url in sitemap_urls:
+    for url in sitemap_urls + page_urls:
         clean = _clean_url(url)
         if clean not in seen and _is_content_url(clean) and not is_non_english_url(clean):
             seen.add(clean)
