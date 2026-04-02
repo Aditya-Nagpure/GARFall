@@ -39,7 +39,7 @@ def build_configs(js_enabled: bool = True) -> tuple[BrowserConfig, CrawlerRunCon
     browser_config = BrowserConfig(
         headless=True,
         java_script_enabled=js_enabled,
-        extra_args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox", "--disable-quic"],
+        extra_args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox", "--disable-quic", "--disable-http2"],
     )
 
     md_generator = DefaultMarkdownGenerator(

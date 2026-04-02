@@ -51,6 +51,9 @@ def _is_content_url(url: str) -> bool:
         return False
     if any(p in url for p in skip_patterns):
         return False
+    # Drop unrendered template variables (e.g. sitemap bugs like /itemDataObject.url)
+    if "{" in url or "}" in url or path.endswith(".url"):
+        return False
     return True
 
 
@@ -69,10 +72,18 @@ def discover_from_sitemap(sitemap_url: str) -> list[str]:
         print(f"  [sitemap] XML parse error: {e}")
         return []
 
-    ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    # Some sites use https:// instead of http:// in the namespace URI — try both
+    namespaces = [
+        {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"},
+        {"sm": "https://www.sitemaps.org/schemas/sitemap/0.9"},
+    ]
 
     # Sitemap index — recurse into child sitemaps
-    child_sitemaps = [el.text for el in root.findall(".//sm:sitemap/sm:loc", ns) if el.text]
+    child_sitemaps = []
+    for ns in namespaces:
+        child_sitemaps = [el.text for el in root.findall(".//sm:sitemap/sm:loc", ns) if el.text]
+        if child_sitemaps:
+            break
     if child_sitemaps:
         urls = []
         for child in child_sitemaps:
@@ -80,7 +91,11 @@ def discover_from_sitemap(sitemap_url: str) -> list[str]:
         return urls
 
     # Regular sitemap
-    urls = [el.text for el in root.findall(".//sm:url/sm:loc", ns) if el.text]
+    urls = []
+    for ns in namespaces:
+        urls = [el.text for el in root.findall(".//sm:url/sm:loc", ns) if el.text]
+        if urls:
+            break
     return urls
 
 
