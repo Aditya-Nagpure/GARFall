@@ -54,6 +54,20 @@ def _is_content_url(url: str) -> bool:
     return True
 
 
+def sitemap_urls_from_robots(base: str) -> list[str]:
+    """Extract Sitemap: directives from robots.txt."""
+    try:
+        resp = requests.get(
+            f"{base}/robots.txt",
+            timeout=10,
+            headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
+        )
+        resp.raise_for_status()
+    except Exception:
+        return []
+    return re.findall(r"(?im)^Sitemap:\s*(\S+)", resp.text)
+
+
 def discover_from_sitemap(sitemap_url: str) -> list[str]:
     """Fetch and parse a sitemap (including sitemap index files)."""
     try:
@@ -118,12 +132,17 @@ def discover_urls(start_url: str) -> list[str]:
     parsed = urlparse(start_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
 
-    # Try common sitemap locations
-    candidates = [
-        urljoin(base, "/sitemap.xml"),
-        urljoin(base, "/sitemap_index.xml"),
-        urljoin(base, "/sitemap/sitemap.xml"),
-    ]
+    # Prefer sitemap URLs declared in robots.txt; fall back to guessed paths
+    robots_sitemaps = sitemap_urls_from_robots(base)
+    if robots_sitemaps:
+        print(f"  Found {len(robots_sitemaps)} sitemap(s) in robots.txt.")
+        candidates = robots_sitemaps
+    else:
+        candidates = [
+            urljoin(base, "/sitemap.xml"),
+            urljoin(base, "/sitemap_index.xml"),
+            urljoin(base, "/sitemap/sitemap.xml"),
+        ]
 
     sitemap_urls = []
     for sitemap_url in candidates:
