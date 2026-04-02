@@ -111,8 +111,8 @@ def discover_from_page(root_url: str, max_links: int = 500) -> list[str]:
 
 def discover_urls(start_url: str) -> list[str]:
     """
-    Main entry point. Tries sitemap.xml first, then supplements with page link
-    extraction from the root URL to catch pages missing from the sitemap.
+    Main entry point. Tries sitemap.xml first; falls back to page link
+    extraction if no sitemap is found.
     Returns a deduplicated, filtered list of URLs to crawl.
     """
     parsed = urlparse(start_url)
@@ -134,18 +134,14 @@ def discover_urls(start_url: str) -> list[str]:
             break
 
     if not sitemap_urls:
-        print(f"  No sitemap found, using page link extraction only.")
+        print(f"  No sitemap found, falling back to page link extraction from {base} ...")
+        sitemap_urls = discover_from_page(base)
+        print(f"  Found {len(sitemap_urls)} URLs via page links.")
 
-    # Always supplement with link extraction from the root page to catch
-    # pages that are linked but not listed in the sitemap.
-    print(f"  Supplementing with link extraction from {base} ...")
-    page_urls = discover_from_page(base)
-    print(f"  Found {len(page_urls)} URLs via page links.")
-
-    # Merge and deduplicate with filtering
+    # Deduplicate and filter
     seen = set()
     result = []
-    for url in sitemap_urls + page_urls:
+    for url in sitemap_urls:
         clean = _clean_url(url)
         if clean not in seen and _is_content_url(clean) and not is_non_english_url(clean):
             seen.add(clean)
