@@ -1,0 +1,14 @@
+CLAUDE.md
+
+output/
+
+.venv/
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python     
+
+.DS_Store
+
+reference.md
