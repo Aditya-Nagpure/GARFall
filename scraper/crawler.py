@@ -39,6 +39,7 @@ def build_configs(js_enabled: bool = True) -> tuple[BrowserConfig, CrawlerRunCon
     browser_config = BrowserConfig(
         headless=True,
         java_script_enabled=js_enabled,
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         extra_args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox", "--disable-quic", "--disable-http2"],
     )
 
@@ -53,7 +54,7 @@ def build_configs(js_enabled: bool = True) -> tuple[BrowserConfig, CrawlerRunCon
     run_config = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS,
         markdown_generator=md_generator,
-        page_timeout=60000,       # 60s per page
+        page_timeout=90000,       # 60s per page
         wait_until="domcontentloaded",
         stream=True,              # stream results as they complete
     )
