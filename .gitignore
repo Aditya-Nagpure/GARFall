@@ -1,14 +1,26 @@
-CLAUDE.md
+# Environment
+.env
 
+# Scraper output
 output/
 
+# Vector database
+chroma_db/
+
+# Python
 .venv/
-__pycache__
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python     
+.Python
 
+# Streamlit
+.streamlit/
+
+# macOS
 .DS_Store
 
+# Project-specific
 reference.md
+memory/

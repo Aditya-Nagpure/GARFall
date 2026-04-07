@@ -1,4 +1,18 @@
+# Scraping
 crawl4ai
 requests
 langdetect
 psutil
+
+# RAG - Embeddings & Vector Store
+chromadb
+sentence-transformers
+
+# LLM
+groq
+
+# Dashboard
+streamlit
+
+# Env
+python-dotenv

@@ -54,7 +54,7 @@ def build_configs(js_enabled: bool = True) -> tuple[BrowserConfig, CrawlerRunCon
     run_config = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS,
         markdown_generator=md_generator,
-        page_timeout=90000,       # 60s per page
+        page_timeout=90000,       # 00s per page
         wait_until="domcontentloaded",
         stream=True,              # stream results as they complete
     )
