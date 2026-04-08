@@ -45,7 +45,10 @@ def _is_content_url(url: str) -> bool:
                      "/feed", "?replytocom=", "wp-login", "wp-admin",
                      "/category/", "/categories/",
                      "/wp-json", "xmlrpc.php", "?rsd", "?oembed",
-                     "/embed?url=", "wp-content/", "wp-includes/"]
+                     "/embed?url=", "wp-content/", "wp-includes/",
+                     # UI / preference / auth endpoints
+                     "/setprefs", "/preferences", "/history/", "/optout",
+                     "?sig=", "?hl=", "?fg="]
     path = urlparse(url).path.lower()
     if any(path.endswith(ext) for ext in skip_exts):
         return False
@@ -72,18 +75,15 @@ def discover_from_sitemap(sitemap_url: str) -> list[str]:
         print(f"  [sitemap] XML parse error: {e}")
         return []
 
-    # Some sites use https:// instead of http:// in the namespace URI — try both
-    namespaces = [
-        {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"},
-        {"sm": "https://www.sitemaps.org/schemas/sitemap/0.9"},
-    ]
+    # Strip namespace from all tags so we can use simple tag names regardless
+    # of whether the sitemap uses the standard sitemaps.org namespace, a custom
+    # one (e.g. http://www.google.com/schemas/sitemap/0.84), http vs https, etc.
+    for el in root.iter():
+        if "}" in el.tag:
+            el.tag = el.tag.split("}", 1)[1]
 
     # Sitemap index — recurse into child sitemaps
-    child_sitemaps = []
-    for ns in namespaces:
-        child_sitemaps = [el.text for el in root.findall(".//sm:sitemap/sm:loc", ns) if el.text]
-        if child_sitemaps:
-            break
+    child_sitemaps = [el.text for el in root.findall(".//sitemap/loc") if el.text]
     if child_sitemaps:
         urls = []
         for child in child_sitemaps:
@@ -91,12 +91,7 @@ def discover_from_sitemap(sitemap_url: str) -> list[str]:
         return urls
 
     # Regular sitemap
-    urls = []
-    for ns in namespaces:
-        urls = [el.text for el in root.findall(".//sm:url/sm:loc", ns) if el.text]
-        if urls:
-            break
-    return urls
+    return [el.text for el in root.findall(".//url/loc") if el.text]
 
 
 def discover_from_page(root_url: str, max_links: int = 500) -> list[str]:
